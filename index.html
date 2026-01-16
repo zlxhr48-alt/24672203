@@ -1,5 +1,5 @@
 /* --- 기존 변수 선언 아래에 추가 --- */
-const GAS_URL = "여기에_배포한_웹_앱_URL을_넣으세요"; // 1단계에서 받은 URL
+const GAS_URL = https://script.google.com/macros/s/AKfycbwG0w67ontFpckOiHi91rMYt0dnU2qsrNYDA_WT0q3L8kXosIiMYBjQEwfhjnOpns8J/exec"; // 1단계에서 받은 URL
 
 /* --- 기존 endGame 함수를 아래와 같이 수정 --- */
 function endGame() {
@@ -45,3 +45,4 @@ function sendGameResult(finalScore) {
     .then(() => console.log("데이터가 성공적으로 전송되었습니다."))
     .catch(err => console.error("전송 중 오류 발생:", err));
 }
+
