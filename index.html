@@ -3,427 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 포즈 따라하기 게임</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
-    <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+    <title>AI 포즈 맞추기 게임</title>
     <style>
         :root {
-            --primary: #4a90e2;
-            --success: #4caf50;
-            --fail: #f44336;
-            --accent: #ffeb3b;
+            --primary-color: #00bcd4;
+            --secondary-color: #006064;
+            --bg-color: #e0f7fa;
+            --accent-color: #d81b60;
         }
 
-        body { 
-            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
-            font-family: 'Pretendard', 'Nanum Gothic', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh; 
-            margin: 0; 
-            overflow: hidden; 
-        }
-
-        #start-screen, #result-screen {
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
             text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            z-index: 20;
-            max-width: 450px;
-            width: 90%;
-        }
-
-        #result-screen { display: none; }
-
-        h1 { color: var(--primary); margin-bottom: 10px; font-size: 2.2rem; }
-        .score-display { font-size: 4rem; font-weight: bold; color: var(--primary); margin: 20px 0; }
-        p { color: #666; margin-bottom: 20px; line-height: 1.5; }
-        
-        .instruction-box {
-            background: #f8f9fa;
-            border-left: 5px solid var(--primary);
-            padding: 15px;
-            margin-bottom: 25px;
-            text-align: left;
-            font-size: 0.95rem;
-            color: #444;
-        }
-
-        #canvas-container { 
-            position: relative; 
-            border: 8px solid white; 
-            border-radius: 24px; 
-            overflow: hidden; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15); 
-            display: none;
-            line-height: 0;
-        }
-
-        canvas {
-            display: block;
-            margin: 0 auto;
-        }
-
-        /* 레이아웃 겹침 해결을 위한 핵심 수정 부분 */
-        .info-panel { 
-            position: absolute; 
-            top: 0; 
-            width: 100%; 
-            height: 100%; /* 전체 높이 사용 */
-            text-align: center; 
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
-            color: white; 
-            pointer-events: none; 
-            z-index: 10;
+            padding: 20px;
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
         }
 
-        .mission-label { 
-            font-size: 1.1rem; 
-            opacity: 0.8; 
-            margin-top: 30px; /* 상단에서 충분히 뗌 */
-            font-weight: 500;
-            letter-spacing: 2px;
-            background: rgba(0,0,0,0.3);
-            padding: 5px 20px;
-            border-radius: 20px;
-        }
-
-        .mission-target { 
-            font-size: 4.5rem; /* 더 크게 키움 */
-            font-weight: 900; 
-            color: var(--accent); 
-            text-shadow: 0 8px 20px rgba(0,0,0,0.8);
-            margin-top: 60px; /* 라운드 표시로부터 대폭 아래로 내림 */
-            display: block;
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .guide-panel {
-            position: absolute;
-            bottom: 90px;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        #guide-text {
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 14px 28px;
-            border-radius: 40px;
-            display: inline-block;
-            font-size: 1.1rem;
-            border: 2px solid rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(10px);
-            max-width: 85%;
-            word-break: keep-all;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-
-        .status-container {
-            position: absolute;
-            top: 25px;
-            right: 25px;
-            z-index: 15;
-        }
-
-        .status-item {
-            background: rgba(255,255,255,0.2);
-            padding: 8px 20px;
-            border-radius: 50px;
-            color: white;
-            font-size: 1.3rem;
-            font-weight: bold;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.4);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-
-        .score-board { 
-            position: absolute; 
-            bottom: 25px; 
-            left: 50%; 
-            transform: translateX(-50%);
+        .container {
             background: white;
-            padding: 12px 40px;
-            border-radius: 50px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: var(--primary);
-            z-index: 10;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
         }
 
-        button { 
-            padding: 16px 40px; 
-            font-size: 1.4rem; 
+        h1 { color: var(--secondary-color); margin-top: 0; }
+
+        #canvas-container {
+            position: relative;
+            margin: 20px auto;
+            width: 200px;
+            height: 200px;
+            border: 6px solid #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #mission-box {
+            background-color: #fff9c4;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 2px dashed #fbc02d;
+        }
+
+        .mission-title {
+            font-size: 0.9rem;
+            color: #777;
+            margin-bottom: 5px;
+        }
+
+        #mission-name {
+            font-size: 1.6rem;
             font-weight: bold;
-            background-color: var(--primary); 
-            color: white; 
-            border: none; 
-            border-radius: 20px; 
-            cursor: pointer; 
-            transition: all 0.2s; 
-            box-shadow: 0 6px 0 #2a6dbd;
+            color: var(--secondary-color);
+            margin-bottom: 8px;
         }
 
-        button:active { transform: translateY(4px); box-shadow: 0 2px 0 #2a6dbd; }
-
-        #feedback-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 25;
+        #mission-description {
+            font-size: 1rem;
+            color: #555;
+            background: rgba(255,255,255,0.5);
+            padding: 5px;
+            border-radius: 5px;
+            line-height: 1.4;
         }
 
-        .flash-success { background: rgba(76, 175, 80, 0.4); animation: flash 0.6s; }
-        .flash-fail { background: rgba(244, 67, 54, 0.4); animation: flash 0.6s; }
+        #status {
+            font-size: 1.2rem;
+            font-weight: bold;
+            height: 40px;
+            margin: 10px 0;
+            color: var(--accent-color);
+        }
 
-        @keyframes flash {
-            0% { opacity: 0; }
-            50% { opacity: 1; }
-            100% { opacity: 0; }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 #008ba3;
+        }
+
+        button:hover {
+            background-color: #26c6da;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+
+        .hidden { display: none !important; }
+
+        #final-score-display {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        #progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            width: 0%;
+            transition: width 0.1s;
         }
     </style>
 </head>
 <body>
 
-    <!-- 시작 화면 -->
-    <div id="start-screen">
-        <h1>🕺 AI 포즈 챌린지 💃</h1>
-        <p>무작위로 나오는 3개의 포즈 미션을 수행하세요!</p>
-        
-        <div class="instruction-box">
-            <strong>📢 게임 방법:</strong><br>
-            1. 카메라 앞에서 <strong>일어서서</strong> 전신이 잘 보이게 준비하세요.<br>
-            2. 화면에 표시되는 포즈를 5초 안에 정확히 따라하세요.<br>
-            3. AI가 여러분의 동작을 인식하여 점수를 계산합니다.
+    <div class="container">
+        <h1>🧘‍♀️ AI 포즈 챌린지</h1>
+
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <p>카메라 앞에서 랜덤 포즈를 맞춰보세요!<br>총 3문제가 출제됩니다.</p>
+            <p style="font-size:0.85rem; color:#888;">70% 이상의 정확도로 유지하면 성공!</p>
+            <br>
+            <button id="start-btn" onclick="init()">게임 시작하기</button>
+            <p id="loading-msg" class="hidden">인공지능 모델을 불러오고 있습니다...</p>
         </div>
 
-        <div id="loading-msg" style="margin-bottom: 20px; color: #888;">AI 모델을 불러오는 중입니다...</div>
-        <button id="start-btn" onclick="startGame()" style="display:none;">게임 시작하기</button>
+        <!-- Game Play Screen -->
+        <div id="game-screen" class="hidden">
+            <div id="mission-box">
+                <div class="mission-title">미션 <span id="current-num">1</span> / 3</div>
+                <div id="mission-name">준비 중...</div>
+                <div id="mission-description">미션 설명을 불러오는 중...</div>
+                <div class="progress-bar"><div id="progress-fill"></div></div>
+            </div>
+
+            <div id="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+
+            <div id="status">포즈를 취해주세요!</div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden">
+            <h2>챌린지 완료! 🎉</h2>
+            <p>당신의 최종 점수는?</p>
+            <div id="final-score-display">0 / 3</div>
+            <button onclick="location.reload()">다시 도전하기</button>
+        </div>
     </div>
 
-    <!-- 결과 화면 -->
-    <div id="result-screen">
-        <h1>🎮 게임 종료!</h1>
-        <p>당신의 최종 점수는?</p>
-        <div id="final-score" class="score-display">0</div>
-        <button onclick="restartGame()">다시 도전하기</button>
-    </div>
-
-    <!-- 게임 화면 -->
-    <div id="canvas-container">
-        <div id="feedback-overlay"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+    
+    <script type="text/javascript">
+        // Teachable Machine Model URL
+        const URL = "https://teachablemachine.withgoogle.com/models/3D-S4mtMp/"; 
         
-        <div class="info-panel">
-            <span id="round-text" class="mission-label">미션 1 / 3</span>
-            <div id="mission-text" class="mission-target">준비...</div>
-        </div>
-
-        <div class="guide-panel">
-            <div id="guide-text">포즈를 취해 보세요!</div>
-        </div>
-
-        <div class="status-container">
-            <div class="status-item">⏱ <span id="timer-text">5</span>s</div>
-        </div>
-
-        <div id="score-text" class="score-board">SCORE: 000</div>
-    </div>
-
-    <script>
-        let classifier;
-        let video;
-        let modelURL = 'https://teachablemachine.withgoogle.com/models/3D-S4mtMp/';
+        let model, webcam, ctx, maxPredictions;
+        let selectedMissions = [];
+        let currentIdx = 0;
+        let score = 0;
+        let isGameRunning = false;
         
-        const poseInfo = {
-            "만세": "두 손바닥이 쫙 보이게 피고 만세!",
-            "스쿼트": "정면을 보면서 스쿼트 자세를 취하세요.",
-            "하트": "머리 위로 팔을 올려 큰 하트를 만드세요!",
-            "궁수": "왼쪽 손을 앞으로 쭉 뻗으면서 활 쏘는 포즈!",
-            "경례": "왼쪽 손으로 씩씩하게 경례하세요!"
+        let holdCounter = 0;
+        const REQUIRED_HOLD_FRAMES = 15; 
+        const ACCURACY_THRESHOLD = 0.70;
+
+        // 포즈별 설명 매핑 (요청하신 설명 추가)
+        const poseDescriptions = {
+            "경례": "왼손으로 경례하세요.",
+            "하트": "머리 위로 큰 하트 그려주세요.",
+            "궁수": "왼손으로 화살을 쏴주세요.",
+            "양손 머리 위로 들기": "손바닥 쫙피고 정면에서 두 손을 들어주세요."
         };
 
-        const poses = Object.keys(poseInfo);
-        let currentMission = "";
-        let score = 0;
-        let timeLeft = 5;
-        let isGameRunning = false;
-        let timerInterval;
-        
-        let missionCount = 0;
-        const MAX_MISSIONS = 3;
+        async function init() {
+            document.getElementById("start-btn").classList.add("hidden");
+            document.getElementById("loading-msg").classList.remove("hidden");
 
-        function preload() {
-            classifier = ml5.imageClassifier(modelURL + 'model.json', () => {
-                document.getElementById('loading-msg').innerText = "인식 준비 완료!";
-                document.getElementById('start-btn').style.display = "inline-block";
-            });
-        }
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
 
-        function setup() {
-            const canvas = createCanvas(640, 480);
-            canvas.parent('canvas-container');
-            video = createCapture(VIDEO);
-            video.size(640, 480);
-            video.hide();
-        }
+            try {
+                model = await tmPose.load(modelURL, metadataURL);
+                const allLabels = model.getClassLabels();
 
-        function startGame() {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('result-screen').style.display = 'none';
-            document.getElementById('canvas-container').style.display = 'inline-block';
-            
-            isGameRunning = true;
-            score = 0;
-            missionCount = 0;
-            
-            updateScore();
-            nextMission();
-            classifyVideo();
-        }
+                // 'none', 'background', '배경' 등 제외
+                const filteredLabels = allLabels.filter(label => 
+                    label.toLowerCase() !== 'none' && 
+                    label.toLowerCase() !== 'background' && 
+                    label !== '배경'
+                );
 
-        function restartGame() {
-            startGame();
-        }
-
-        function classifyVideo() {
-            if (!isGameRunning) return;
-            classifier.classify(video, (error, results) => {
-                if (error) return;
+                selectedMissions = [];
+                // 실제 학습된 클래스 개수가 3개보다 적을 경우를 대비
+                const missionCount = Math.min(3, filteredLabels.length);
                 
-                let label = results[0].label;
-                let confidence = results[0].confidence;
+                // 랜덤하게 미션 섞기
+                const shuffled = filteredLabels.sort(() => 0.5 - Math.random());
+                selectedMissions = shuffled.slice(0, missionCount);
 
-                if (label === currentMission && confidence > 0.85) {
-                    handleSuccess();
-                } else {
-                    classifyVideo();
-                }
-            });
+                const size = 200;
+                const flip = true; 
+                webcam = new tmPose.Webcam(size, size, flip); 
+                await webcam.setup(); 
+                await webcam.play();
+                
+                window.requestAnimationFrame(loop);
+
+                const canvas = document.getElementById("canvas");
+                canvas.width = size; canvas.height = size;
+                ctx = canvas.getContext("2d");
+
+                document.getElementById("start-screen").classList.add("hidden");
+                document.getElementById("game-screen").classList.remove("hidden");
+                
+                isGameRunning = true;
+                updateDisplay();
+
+            } catch (e) {
+                console.error(e);
+                alert("모델 로드 실패. 카메라 권한과 인터넷 연결을 확인해주세요.");
+                location.reload();
+            }
         }
 
-        function nextMission() {
-            if (!isGameRunning) return;
-
-            missionCount++;
-            if (missionCount > MAX_MISSIONS) {
+        function updateDisplay() {
+            if (currentIdx >= selectedMissions.length) {
                 endGame();
                 return;
             }
-
-            document.getElementById('round-text').innerText = `미션 ${missionCount} / ${MAX_MISSIONS}`;
-
-            let next;
-            do {
-                next = poses[Math.floor(Math.random() * poses.length)];
-            } while (next === currentMission);
-
-            currentMission = next;
-            document.getElementById('mission-text').innerText = currentMission;
-            document.getElementById('guide-text').innerText = `💡 ${poseInfo[currentMission]}`;
             
-            timeLeft = 5;
-            updateTimerUI();
+            const missionName = selectedMissions[currentIdx];
+            document.getElementById("current-num").innerText = currentIdx + 1;
+            document.getElementById("mission-name").innerText = `"${missionName}"`;
             
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                updateTimerUI();
-                if (timeLeft <= 0) {
-                    handleFail();
+            // 설명 업데이트
+            const description = poseDescriptions[missionName] || "정확한 포즈를 취해주세요!";
+            document.getElementById("mission-description").innerText = description;
+            
+            document.getElementById("status").innerText = "동작을 시작하세요!";
+            document.getElementById("status").style.color = "#d81b60";
+            document.getElementById("progress-fill").style.width = "0%";
+            holdCounter = 0;
+        }
+
+        async function loop(timestamp) {
+            webcam.update(); 
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+            const prediction = await model.predict(posenetOutput);
+
+            drawPose(pose);
+
+            if (isGameRunning && currentIdx < selectedMissions.length) {
+                const target = selectedMissions[currentIdx];
+                const targetPredict = prediction.find(p => p.className === target);
+
+                if (targetPredict && targetPredict.probability >= ACCURACY_THRESHOLD) {
+                    holdCounter++;
+                    const percent = (holdCounter / REQUIRED_HOLD_FRAMES) * 100;
+                    document.getElementById("progress-fill").style.width = percent + "%";
+                    document.getElementById("status").innerText = "좋아요! 유지하세요!";
+                    document.getElementById("status").style.color = "#00bcd4";
+
+                    if (holdCounter >= REQUIRED_HOLD_FRAMES) {
+                        success();
+                    }
+                } else {
+                    holdCounter = 0;
+                    document.getElementById("progress-fill").style.width = "0%";
+                    document.getElementById("status").innerText = "정확도를 높여주세요 (70%↑)";
+                    document.getElementById("status").style.color = "#d81b60";
                 }
-            }, 1000);
+            }
         }
 
-        function handleSuccess() {
-            if (!isGameRunning) return;
-            clearInterval(timerInterval);
-            
-            score += 10;
-            updateScore();
-            
-            showFeedback("✨ SUCCESS ✨", "flash-success");
-            
-            setTimeout(() => {
-                nextMission();
-                if (isGameRunning) classifyVideo();
-            }, 1200);
-        }
+        function success() {
+            isGameRunning = false;
+            score++;
+            document.getElementById("status").innerText = "완벽합니다! +1점 👏";
+            document.getElementById("status").style.color = "green";
 
-        function handleFail() {
-            if (!isGameRunning) return;
-            clearInterval(timerInterval);
-            
-            showFeedback("❌ TIME OUT ❌", "flash-fail");
-            
             setTimeout(() => {
-                nextMission();
-                if (isGameRunning) classifyVideo();
-            }, 1200);
+                currentIdx++;
+                isGameRunning = true;
+                updateDisplay();
+            }, 1500);
         }
 
         function endGame() {
             isGameRunning = false;
-            clearInterval(timerInterval);
-            
-            document.getElementById('canvas-container').style.display = 'none';
-            document.getElementById('result-screen').style.display = 'block';
-            document.getElementById('final-score').innerText = score;
+            document.getElementById("game-screen").classList.add("hidden");
+            document.getElementById("result-screen").classList.remove("hidden");
+            document.getElementById("final-score-display").innerText = `${score} / ${selectedMissions.length}`;
         }
 
-        function showFeedback(text, className) {
-            const overlay = document.getElementById('feedback-overlay');
-            overlay.innerText = text;
-            overlay.className = className;
-            overlay.style.opacity = "1";
-            overlay.style.fontSize = "5rem";
-            overlay.style.color = "white";
-            overlay.style.fontWeight = "900";
-            overlay.style.textShadow = "0 0 30px rgba(0,0,0,0.8)";
-
-            setTimeout(() => { overlay.style.opacity = "0"; }, 800);
-        }
-
-        function updateScore() {
-            document.getElementById('score-text').innerText = `SCORE: ${String(score).padStart(3, '0')}`;
-        }
-
-        function updateTimerUI() {
-            document.getElementById('timer-text').innerText = timeLeft;
-            const timerSpan = document.getElementById('timer-text');
-            if (timeLeft <= 2) {
-                timerSpan.style.color = "#ff5252";
-            } else {
-                timerSpan.style.color = "white";
+        function drawPose(pose) {
+            if (webcam.canvas) {
+                ctx.drawImage(webcam.canvas, 0, 0);
+                if (pose) {
+                    const minPartConfidence = 0.5;
+                    tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                    tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+                }
             }
-        }
-
-        function draw() {
-            push();
-            translate(width, 0);
-            scale(-1, 1);
-            image(video, 0, 0, width, height);
-            pop();
         }
     </script>
 </body>
