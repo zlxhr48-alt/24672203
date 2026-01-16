@@ -10,6 +10,7 @@
             --secondary-color: #006064;
             --bg-color: #e0f7fa;
             --accent-color: #d81b60;
+            --warning-color: #f44336;
         }
 
         body {
@@ -58,12 +59,29 @@
             border-radius: 12px;
             margin: 20px 0;
             border: 2px dashed #fbc02d;
+            position: relative;
+        }
+
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
         }
 
         .mission-title {
             font-size: 0.9rem;
             color: #777;
-            margin-bottom: 5px;
+        }
+
+        #timer-display {
+            font-weight: bold;
+            color: var(--warning-color);
+            font-size: 1.2rem;
+            background: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            border: 2px solid var(--warning-color);
         }
 
         #mission-name {
@@ -127,7 +145,7 @@
             height: 10px;
             background: #eee;
             border-radius: 5px;
-            margin-top: 10px;
+            margin-top: 15px;
             overflow: hidden;
         }
 
@@ -147,7 +165,7 @@
         <!-- Start Screen -->
         <div id="start-screen">
             <p>카메라 앞에서 랜덤 포즈를 맞춰보세요!<br>총 3문제가 출제됩니다.</p>
-            <p style="font-size:0.85rem; color:#888;">70% 이상의 정확도로 유지하면 성공!</p>
+            <p style="font-size:0.9rem; color:var(--accent-color); font-weight:bold;">제한 시간: 문제당 5초!</p>
             <br>
             <button id="start-btn" onclick="init()">게임 시작하기</button>
             <p id="loading-msg" class="hidden">인공지능 모델을 불러오고 있습니다...</p>
@@ -156,7 +174,10 @@
         <!-- Game Play Screen -->
         <div id="game-screen" class="hidden">
             <div id="mission-box">
-                <div class="mission-title">미션 <span id="current-num">1</span> / 3</div>
+                <div class="mission-header">
+                    <div class="mission-title">미션 <span id="current-num">1</span> / 3</div>
+                    <div id="timer-display">5.0s</div>
+                </div>
                 <div id="mission-name">준비 중...</div>
                 <div id="mission-description">미션 설명을 불러오는 중...</div>
                 <div class="progress-bar"><div id="progress-fill"></div></div>
@@ -171,7 +192,7 @@
 
         <!-- Result Screen -->
         <div id="result-screen" class="hidden">
-            <h2>챌린지 완료! 🎉</h2>
+            <h2 id="result-title">챌린지 완료! 🎉</h2>
             <p>당신의 최종 점수는?</p>
             <div id="final-score-display">0 / 3</div>
             <button onclick="location.reload()">다시 도전하기</button>
@@ -182,10 +203,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
     
     <script type="text/javascript">
-        // Teachable Machine Model URL
         const URL = "https://teachablemachine.withgoogle.com/models/3D-S4mtMp/"; 
         
-        let model, webcam, ctx, maxPredictions;
+        let model, webcam, ctx;
         let selectedMissions = [];
         let currentIdx = 0;
         let score = 0;
@@ -195,7 +215,11 @@
         const REQUIRED_HOLD_FRAMES = 15; 
         const ACCURACY_THRESHOLD = 0.70;
 
-        // 포즈별 설명 매핑 (요청하신 설명 추가)
+        // 제한 시간 관련 변수
+        const TIME_LIMIT = 5; // 5초
+        let timeLeft = TIME_LIMIT;
+        let timerInterval = null;
+
         const poseDescriptions = {
             "경례": "왼손으로 경례하세요.",
             "하트": "머리 위로 큰 하트 그려주세요.",
@@ -214,18 +238,13 @@
                 model = await tmPose.load(modelURL, metadataURL);
                 const allLabels = model.getClassLabels();
 
-                // 'none', 'background', '배경' 등 제외
                 const filteredLabels = allLabels.filter(label => 
                     label.toLowerCase() !== 'none' && 
                     label.toLowerCase() !== 'background' && 
                     label !== '배경'
                 );
 
-                selectedMissions = [];
-                // 실제 학습된 클래스 개수가 3개보다 적을 경우를 대비
                 const missionCount = Math.min(3, filteredLabels.length);
-                
-                // 랜덤하게 미션 섞기
                 const shuffled = filteredLabels.sort(() => 0.5 - Math.random());
                 selectedMissions = shuffled.slice(0, missionCount);
 
@@ -244,8 +263,7 @@
                 document.getElementById("start-screen").classList.add("hidden");
                 document.getElementById("game-screen").classList.remove("hidden");
                 
-                isGameRunning = true;
-                updateDisplay();
+                startNextMission();
 
             } catch (e) {
                 console.error(e);
@@ -254,24 +272,58 @@
             }
         }
 
-        function updateDisplay() {
+        function startNextMission() {
             if (currentIdx >= selectedMissions.length) {
                 endGame();
                 return;
             }
             
+            // 미션 정보 업데이트
             const missionName = selectedMissions[currentIdx];
             document.getElementById("current-num").innerText = currentIdx + 1;
             document.getElementById("mission-name").innerText = `"${missionName}"`;
+            document.getElementById("mission-description").innerText = poseDescriptions[missionName] || "정확한 포즈를 취해주세요!";
             
-            // 설명 업데이트
-            const description = poseDescriptions[missionName] || "정확한 포즈를 취해주세요!";
-            document.getElementById("mission-description").innerText = description;
-            
+            // 상태 초기화
             document.getElementById("status").innerText = "동작을 시작하세요!";
             document.getElementById("status").style.color = "#d81b60";
             document.getElementById("progress-fill").style.width = "0%";
             holdCounter = 0;
+            isGameRunning = true;
+
+            // 타이머 시작
+            startTimer();
+        }
+
+        function startTimer() {
+            timeLeft = TIME_LIMIT;
+            updateTimerUI();
+            
+            if(timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.1;
+                if (timeLeft <= 0) {
+                    timeLeft = 0;
+                    clearInterval(timerInterval);
+                    failByTimeout();
+                }
+                updateTimerUI();
+            }, 100);
+        }
+
+        function updateTimerUI() {
+            const timerEl = document.getElementById("timer-display");
+            timerEl.innerText = timeLeft.toFixed(1) + "s";
+            
+            // 2초 미만일 때 색상 변경
+            if (timeLeft <= 2) {
+                timerEl.style.color = "red";
+                timerEl.style.borderColor = "red";
+            } else {
+                timerEl.style.color = "var(--warning-color)";
+                timerEl.style.borderColor = "var(--warning-color)";
+            }
         }
 
         async function loop(timestamp) {
@@ -303,7 +355,7 @@
                 } else {
                     holdCounter = 0;
                     document.getElementById("progress-fill").style.width = "0%";
-                    document.getElementById("status").innerText = "정확도를 높여주세요 (70%↑)";
+                    document.getElementById("status").innerText = "포즈를 맞춰주세요!";
                     document.getElementById("status").style.color = "#d81b60";
                 }
             }
@@ -311,22 +363,45 @@
 
         function success() {
             isGameRunning = false;
+            clearInterval(timerInterval);
             score++;
             document.getElementById("status").innerText = "완벽합니다! +1점 👏";
             document.getElementById("status").style.color = "green";
 
             setTimeout(() => {
                 currentIdx++;
-                isGameRunning = true;
-                updateDisplay();
+                startNextMission();
+            }, 1500);
+        }
+
+        function failByTimeout() {
+            isGameRunning = false;
+            document.getElementById("status").innerText = "시간 초과! 다음 문제로.. 😭";
+            document.getElementById("status").style.color = "red";
+            document.getElementById("progress-fill").style.width = "0%";
+
+            setTimeout(() => {
+                currentIdx++;
+                startNextMission();
             }, 1500);
         }
 
         function endGame() {
             isGameRunning = false;
+            if(timerInterval) clearInterval(timerInterval);
+            
             document.getElementById("game-screen").classList.add("hidden");
             document.getElementById("result-screen").classList.remove("hidden");
             document.getElementById("final-score-display").innerText = `${score} / ${selectedMissions.length}`;
+            
+            const resultTitle = document.getElementById("result-title");
+            if(score === selectedMissions.length) {
+                resultTitle.innerText = "포즈 마스터 탄생! 🏆";
+            } else if (score > 0) {
+                resultTitle.innerText = "수고하셨습니다! 🎉";
+            } else {
+                resultTitle.innerText = "조금 더 연습해볼까요? 💪";
+            }
         }
 
         function drawPose(pose) {
