@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -21,7 +21,7 @@
             flex-direction: column; 
             align-items: center; 
             justify-content: center; 
-            height: 100vh; 
+            min-height: 100vh; 
             margin: 0; 
             overflow: hidden; 
         }
@@ -33,15 +33,27 @@
             border-radius: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             z-index: 20;
-            position: absolute;
+            max-width: 450px;
+            width: 90%;
         }
 
         #result-screen { display: none; }
 
-        h1 { color: var(--primary); margin-bottom: 10px; font-size: 2.5rem; }
+        h1 { color: var(--primary); margin-bottom: 10px; font-size: 2.2rem; }
         .score-display { font-size: 4rem; font-weight: bold; color: var(--primary); margin: 20px 0; }
-        p { color: #666; margin-bottom: 30px; }
+        p { color: #666; margin-bottom: 20px; line-height: 1.5; }
+        
+        .instruction-box {
+            background: #f8f9fa;
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: left;
+            font-size: 0.95rem;
+            color: #444;
+        }
 
+        /* 캔버스 컨테이너 중앙 정렬 강화 */
         #canvas-container { 
             position: relative; 
             border: 8px solid white; 
@@ -49,6 +61,12 @@
             overflow: hidden; 
             box-shadow: 0 20px 40px rgba(0,0,0,0.15); 
             display: none;
+            line-height: 0;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
         }
 
         .info-panel { 
@@ -60,10 +78,11 @@
             background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
             color: white; 
             pointer-events: none; 
+            z-index: 10;
         }
 
         .mission-label { font-size: 1.2rem; opacity: 0.9; margin-bottom: 5px; }
-        .mission-target { font-size: 3.5rem; font-weight: 800; color: var(--accent); text-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .mission-target { font-size: 3.2rem; font-weight: 800; color: var(--accent); text-shadow: 0 4px 8px rgba(0,0,0,0.3); }
 
         .guide-panel {
             position: absolute;
@@ -71,18 +90,20 @@
             width: 100%;
             text-align: center;
             pointer-events: none;
+            z-index: 10;
         }
 
         #guide-text {
             background: rgba(0, 0, 0, 0.6);
             color: white;
-            padding: 10px 25px;
+            padding: 12px 25px;
             border-radius: 30px;
             display: inline-block;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             border: 2px solid rgba(255, 255, 255, 0.3);
             backdrop-filter: blur(5px);
-            max-width: 80%;
+            max-width: 85%;
+            word-break: keep-all;
         }
 
         .status-container {
@@ -93,14 +114,15 @@
             flex-direction: column;
             gap: 10px;
             align-items: flex-end;
+            z-index: 10;
         }
 
         .status-item {
             background: rgba(0,0,0,0.5);
-            padding: 8px 15px;
+            padding: 8px 18px;
             border-radius: 50px;
             color: white;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: bold;
         }
 
@@ -110,17 +132,18 @@
             left: 50%; 
             transform: translateX(-50%);
             background: white;
-            padding: 10px 30px;
+            padding: 12px 35px;
             border-radius: 50px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: bold;
             color: var(--primary);
+            z-index: 10;
         }
 
         button { 
-            padding: 18px 40px; 
-            font-size: 1.4rem; 
+            padding: 16px 36px; 
+            font-size: 1.3rem; 
             font-weight: bold;
             background-color: var(--primary); 
             color: white; 
@@ -139,15 +162,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 8rem;
+            font-size: 6rem;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.2s;
-            z-index: 5;
+            z-index: 15;
         }
 
-        .flash-success { background: rgba(76, 175, 80, 0.4); animation: flash 0.6s; }
-        .flash-fail { background: rgba(244, 67, 54, 0.4); animation: flash 0.6s; }
+        .flash-success { background: rgba(76, 175, 80, 0.3); animation: flash 0.6s; }
+        .flash-fail { background: rgba(244, 67, 54, 0.3); animation: flash 0.6s; }
 
         @keyframes flash {
             0% { opacity: 0; }
@@ -161,8 +184,16 @@
     <!-- 시작 화면 -->
     <div id="start-screen">
         <h1>🕺 AI 포즈 챌린지 💃</h1>
-        <p>3개의 포즈 미션을 수행하세요!</p>
-        <div id="loading-msg" style="margin-bottom: 20px; color: #888;">모델 불러오는 중...</div>
+        <p>무작위로 나오는 3개의 포즈 미션을 수행하세요!</p>
+        
+        <div class="instruction-box">
+            <strong>📢 게임 방법:</strong><br>
+            1. 카메라 앞에서 <strong>일어서서</strong> 전신이 잘 보이게 준비하세요.<br>
+            2. 화면에 표시되는 포즈를 5초 안에 정확히 따라하세요.<br>
+            3. AI가 여러분의 동작을 인식하여 점수를 계산합니다.
+        </div>
+
+        <div id="loading-msg" style="margin-bottom: 20px; color: #888;">AI 모델을 불러오는 중입니다...</div>
         <button id="start-btn" onclick="startGame()" style="display:none;">게임 시작하기</button>
     </div>
 
@@ -219,7 +250,7 @@
 
         function preload() {
             classifier = ml5.imageClassifier(modelURL + 'model.json', () => {
-                document.getElementById('loading-msg').innerText = "준비 완료!";
+                document.getElementById('loading-msg').innerText = "인식 준비 완료!";
                 document.getElementById('start-btn').style.display = "inline-block";
             });
         }
@@ -235,7 +266,7 @@
         function startGame() {
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'none';
-            document.getElementById('canvas-container').style.display = 'block';
+            document.getElementById('canvas-container').style.display = 'inline-block';
             
             isGameRunning = true;
             score = 0;
@@ -308,7 +339,6 @@
             
             showFeedback("✨ SUCCESS ✨", "flash-success");
             
-            // 인식이 완료되었으므로 잠시 대기 후 다음 미션
             setTimeout(() => {
                 nextMission();
                 if (isGameRunning) classifyVideo();
